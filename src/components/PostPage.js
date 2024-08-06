@@ -1,51 +1,45 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 import html2canvas from "html2canvas";
-import "./PostPage.css";
-import { FiImage } from "react-icons/fi";
+import { FiImage, FiSun, FiMoon, FiCopy } from "react-icons/fi";
+import "../postPage.css";
 
 const PostPage = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [image, setImage] = useState(null);
   const [ogImage, setOgImage] = useState(null);
-  const [ogImageUrl, setOgImageUrl] = useState("");
-  const [theme, setTheme] = useState("Light");
+  const [ogImageBlobUrl, setOgImageBlobUrl] = useState(null); 
+  const [theme, setTheme] = useState("light");
+  const urlInputRef = useRef(null);
 
   useEffect(() => {
-    if (theme === "Dark") {
-      document.body.classList.add("dark-mode");
-    } else {
-      document.body.classList.remove("dark-mode");
-    }
+    document.body.className = theme;
   }, [theme]);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith("image/")) {
-      setImage(URL.createObjectURL(file));
+      const reader = new FileReader();
+      reader.onload = (e) => setImage(e.target.result);
+      reader.readAsDataURL(file);
     } else {
       alert("Please upload a valid image file.");
     }
   };
 
   const generateOgImage = () => {
-    if (ogImage) return;
-
     const previewElement = document.createElement("div");
     previewElement.style.position = "absolute";
     previewElement.style.left = "-9999px";
-    previewElement.style.top = "-9999px";
     previewElement.innerHTML = `
-      <div id="post-preview" class="og-image-preview" style="width: 1200px; height: 630px; padding: 20px; box-sizing: border-box; display: flex; align-items: center; border-radius: 10px;">
+      <div id="post-preview" class="og-image-preview">
         ${
           image
-            ? `<div class="image-container" style="margin-right: 6px;"><img src="${image}" alt="Post" class="generated-image" style="width: 50%;"/></div>`
+            ? `<div class="image-container"><img src="${image}" alt="Post" class="generated-image"/></div>`
             : ""
         }
-        <div class="post-content" style="color: ${
-          theme === "Light" ? "#000000" : "#ffffff"
-        }; width: 50%;">
+        <div class="post-content">
           <h1 class="og-title">${title}</h1>
           <p class="og-description">${content}</p>
         </div>
@@ -53,27 +47,30 @@ const PostPage = () => {
     `;
     document.body.appendChild(previewElement);
 
-    const imageElement = previewElement.querySelector("img");
-    if (imageElement) {
-      imageElement.onload = () => captureCanvas(previewElement);
-      imageElement.onerror = () => captureCanvas(previewElement);
-    } else {
-      captureCanvas(previewElement);
-    }
-  };
-
-  const captureCanvas = (previewElement) => {
-    html2canvas(previewElement, { useCORS: true })
+    html2canvas(previewElement.querySelector("#post-preview"), {
+      useCORS: true,
+      scale: 2,
+    })
       .then((canvas) => {
-        const imgData = canvas.toDataURL("image/png");
-        setOgImage(imgData);
-        setOgImageUrl(imgData); // Set the URL for easy copying
-        document.body.removeChild(previewElement); // Clean up
+        canvas.toBlob((blob) => {
+          const url = URL.createObjectURL(blob);
+          setOgImage(url);
+          setOgImageBlobUrl(url); 
+          document.body.removeChild(previewElement);
+        }, "image/png");
       })
       .catch((error) => {
         console.error("Error generating OG image:", error);
-        document.body.removeChild(previewElement); // Clean up
+        document.body.removeChild(previewElement);
       });
+  };
+
+  const copyImageUrl = () => {
+    if (ogImageBlobUrl && urlInputRef.current) {
+      urlInputRef.current.select();
+      document.execCommand("copy");
+      alert("Image URL copied to clipboard!");
+    }
   };
 
   return (
@@ -84,12 +81,6 @@ const PostPage = () => {
         </Helmet>
 
         <div className="post-form-content">
-          <button
-            onClick={() => setTheme(theme === "Light" ? "Dark" : "Light")}
-            className="theme-toggle-button"
-          >
-            {theme === "Light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
-          </button>
           <input
             type="text"
             placeholder="Title"
@@ -105,7 +96,7 @@ const PostPage = () => {
           />
           <div className="post-form-footer">
             <label htmlFor="image-upload" className="image-upload-label">
-              <FiImage size={24} color="#1DA1F2" />
+              <FiImage size={24} />
             </label>
             <input
               type="file"
@@ -114,7 +105,7 @@ const PostPage = () => {
               className="post-form-file-input"
             />
             <button onClick={generateOgImage} className="post-form-button">
-              Post
+              Generate OG Image
             </button>
           </div>
         </div>
@@ -122,18 +113,26 @@ const PostPage = () => {
           <div className="generated-og-image">
             <h2>Generated OG Image</h2>
             <img src={ogImage} alt="OG Preview" />
-            <p>Image URL:</p>
-            <textarea
-              readOnly
-              value={ogImageUrl}
-              style={{
-                width: "40%",
-                padding: "20px",
-                marginTop: "10px",
-              }}
-            />
+            <div className="url-container">
+              <input
+                type="text"
+                value={ogImageBlobUrl || ""}
+                readOnly
+                ref={urlInputRef}
+                className="url-input"
+              />
+              <button onClick={copyImageUrl} className="copy-button">
+                <FiCopy />
+              </button>
+            </div>
           </div>
         )}
+        <button
+          onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+          className="theme-toggle-button"
+        >
+          {theme === "light" ? <FiMoon /> : <FiSun />}
+        </button>
       </div>
     </HelmetProvider>
   );
