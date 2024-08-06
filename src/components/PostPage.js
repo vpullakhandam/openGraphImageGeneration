@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 import html2canvas from "html2canvas";
-import "./postPage.css";
+import "./PostPage.css";
 import { FiImage } from "react-icons/fi";
 
 const PostPage = () => {
@@ -9,6 +9,16 @@ const PostPage = () => {
   const [content, setContent] = useState("");
   const [image, setImage] = useState(null);
   const [ogImage, setOgImage] = useState(null);
+  const [ogImageUrl, setOgImageUrl] = useState("");
+  const [theme, setTheme] = useState("Light");
+
+  useEffect(() => {
+    if (theme === "Dark") {
+      document.body.classList.add("dark-mode");
+    } else {
+      document.body.classList.remove("dark-mode");
+    }
+  }, [theme]);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -27,14 +37,18 @@ const PostPage = () => {
     previewElement.style.left = "-9999px";
     previewElement.style.top = "-9999px";
     previewElement.innerHTML = `
-      <div id="post-preview" style="width: 1200px; height: 630px; background-color: white; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 1px solid #e1e8ed; border-radius: 8px;">
-        <h1 style="font-size: 36px; color: #14171a;">${title}</h1>
-        <p style="font-size: 18px; color: #657786;">${content}</p>
+      <div id="post-preview" class="og-image-preview" style="width: 1200px; height: 630px; padding: 20px; box-sizing: border-box; display: flex; align-items: center; border-radius: 10px;">
         ${
           image
-            ? `<img src="${image}" alt="Post" style="max-width: 100%; max-height: 400px; margin-top: 10px;" />`
+            ? `<div class="image-container" style="margin-right: 6px;"><img src="${image}" alt="Post" class="generated-image" style="width: 50%;"/></div>`
             : ""
         }
+        <div class="post-content" style="color: ${
+          theme === "Light" ? "#000000" : "#ffffff"
+        }; width: 50%;">
+          <h1 class="og-title">${title}</h1>
+          <p class="og-description">${content}</p>
+        </div>
       </div>
     `;
     document.body.appendChild(previewElement);
@@ -53,6 +67,7 @@ const PostPage = () => {
       .then((canvas) => {
         const imgData = canvas.toDataURL("image/png");
         setOgImage(imgData);
+        setOgImageUrl(imgData); // Set the URL for easy copying
         document.body.removeChild(previewElement); // Clean up
       })
       .catch((error) => {
@@ -67,7 +82,21 @@ const PostPage = () => {
         <Helmet>
           {ogImage && <meta property="og:image" content={ogImage} />}
         </Helmet>
+
         <div className="post-form-content">
+          <button
+            onClick={() => setTheme(theme === "Light" ? "Dark" : "Light")}
+            className="theme-toggle-button"
+          >
+            {theme === "Light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+          </button>
+          <input
+            type="text"
+            placeholder="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="post-form-input"
+          />
           <textarea
             placeholder="What's happening?"
             value={content}
@@ -93,6 +122,16 @@ const PostPage = () => {
           <div className="generated-og-image">
             <h2>Generated OG Image</h2>
             <img src={ogImage} alt="OG Preview" />
+            <p>Image URL:</p>
+            <textarea
+              readOnly
+              value={ogImageUrl}
+              style={{
+                width: "40%",
+                padding: "20px",
+                marginTop: "10px",
+              }}
+            />
           </div>
         )}
       </div>
